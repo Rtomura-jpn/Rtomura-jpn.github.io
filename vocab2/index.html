@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中国語単語学習</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,8 +14,16 @@
             box-sizing: border-box;
         }
 
+        /* 言語別フォント設定 */
+        :lang(zh) {
+            font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        :lang(ja) {
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+        }
+
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
@@ -221,6 +232,14 @@
             margin-top: 5px;
         }
 
+        /* 言語別フォント */
+        [lang="zh"] {
+            font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        [lang="ja"] {
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+        }
+
         @media (max-width: 480px) {
             .lesson-tabs {
                 flex-wrap: wrap;
@@ -358,22 +377,22 @@
                 wordItem.innerHTML = `
                     <div class="word-content">
                         <div class="word-field chinese ${hiddenFields.includes('chinese') ? 'hidden' : ''}" 
-                             data-field="chinese" data-index="${index}">
+                             lang="zh" data-field="chinese" data-index="${index}">
                             ${hiddenFields.includes('chinese') ? 'タップして表示' : word[0]}
                         </div>
                         <div class="word-field pinyin ${hiddenFields.includes('pinyin') ? 'hidden' : ''}" 
-                             data-field="pinyin" data-index="${index}">
+                             lang="zh" data-field="pinyin" data-index="${index}">
                             ${hiddenFields.includes('pinyin') ? 'タップして表示' : word[1]}
                         </div>
                         <div class="word-field meaning ${hiddenFields.includes('meaning') ? 'hidden' : ''}" 
-                             data-field="meaning" data-index="${index}">
+                             lang="ja" data-field="meaning" data-index="${index}">
                             ${hiddenFields.includes('meaning') ? 'タップして表示' : word[2]}
                         </div>
                     </div>
                     <button class="example-btn" onclick="toggleExample(${currentLesson}, ${index})">例文を表示</button>
                     <div class="example-text hidden" id="example-${currentLesson}-${index}">
-                        <div class="example-chinese">${word[3]}</div>
-                        <div class="example-translation">${word[4]}</div>
+                        <div class="example-chinese" lang="zh">${word[3]}</div>
+                        <div class="example-translation" lang="ja">${word[4]}</div>
                     </div>
                 `;
                 wordList.appendChild(wordItem);
