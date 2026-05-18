@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>HSK 汉字 — 単語学習アプリ</title>
+<style>
+:root {
+  --bg: #F7F6F3; --bg2: #EEECEA; --bg3: #E3E1DC;
+  --text: #1A1917; --text2: #6B6760; --text3: #A09C97;
+  --border: #D8D5D0;
+  --blue: #2563EB; --blue-bg: #EFF4FF;
+  --green: #16A34A; --green-bg: #F0FDF4;
+  --red: #DC2626; --red-bg: #FEF2F2;
+  --amber: #D97706; --amber-bg: #FFFBEB;
+  --radius: 10px; --radius-sm: 7px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif; color: var(--text); }
+.app { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 0 14px 32px; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Loading */
+#loading-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+}
+.load-logo { font-size: 36px; font-weight: 700; letter-spacing: -2px; color: var(--text); margin-bottom: 6px; }
+.load-logo span { color: var(--blue); }
+.load-sub { font-size: 12px; color: var(--text3); margin-bottom: 28px; }
+.load-bar-bg { width: 200px; height: 3px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.load-bar { height: 100%; background: var(--blue); border-radius: 3px; transition: width .3s; }
+.load-status { font-size: 11px; color: var(--text3); margin-top: 10px; }
+
+/* Home */
+.home-header { padding-top: 32px; margin-bottom: 28px; }
+.home-logo { font-size: 34px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
+.home-logo span { color: var(--blue); }
+.home-tagline { font-size: 12px; color: var(--text3); margin-top: 5px; }
+.sec-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+
+.grade-grid, .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.grade-btn, .mode-btn {
+  background: white; border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 14px 12px; text-align: center; cursor: pointer; transition: all .15s; box-shadow: var(--shadow);
+}
+.grade-btn:active, .mode-btn:active { transform: scale(.97); }
+.grade-btn.sel { border-color: var(--blue); background: var(--blue-bg); }
+.mode-btn.sel { border-color: var(--green); background: var(--green-bg); }
+.grade-num { font-size: 22px; font-weight: 700; display: block; color: var(--text); }
+.grade-btn.sel .grade-num { color: var(--blue); }
+.grade-sub { font-size: 11px; color: var(--text3); margin-top: 2px; display: block; }
+.mode-icon { font-size: 22px; display: block; margin-bottom: 5px; }
+.mode-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.mode-btn.sel .mode-name { color: var(--green); }
+.mode-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.btn-primary {
+  width: 100%; padding: 14px; background: var(--text); color: var(--bg);
+  border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.btn-primary:disabled { opacity: .3; cursor: not-allowed; }
+.btn-primary:not(:disabled):active { transform: scale(.98); opacity: .9; }
+.btn-secondary {
+  width: 100%; padding: 11px; background: white; color: var(--text2);
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; cursor: pointer; margin-top: 8px; box-shadow: var(--shadow); transition: all .15s;
+}
+.btn-secondary:active { transform: scale(.98); }
+
+/* Game header */
+.game-header { display: flex; align-items: center; justify-content: space-between; padding-top: 20px; margin-bottom: 10px; }
+.exit-btn { background: none; border: none; padding: 6px 0; font-size: 12px; color: var(--text3); cursor: pointer; }
+.score-area { text-align: right; display: flex; align-items: center; gap: 8px; }
+.combo-badge {
+  display: none; font-size: 10px; font-weight: 600; padding: 3px 8px;
+  background: var(--amber-bg); color: var(--amber); border-radius: 20px; border: 1px solid #FDE68A;
+}
+.score-num { font-size: 22px; font-weight: 700; }
+.score-lbl { font-size: 10px; color: var(--text3); }
+.timer-bar-bg { height: 3px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.timer-bar { height: 100%; background: var(--blue); border-radius: 3px; transition: width .15s linear; }
+.timer-text { font-size: 10px; color: var(--text3); text-align: right; margin-top: 3px; margin-bottom: 12px; }
+
+/* Typing */
+.hanzi-card {
+  background: white; border-radius: var(--radius); padding: 28px 16px 20px;
+  text-align: center; margin-bottom: 14px; box-shadow: var(--shadow); border: 1px solid var(--border);
+}
+.hanzi-char { font-size: 58px; line-height: 1.1; }
+.hanzi-hint { font-size: 13px; color: var(--text3); margin-top: 8px; min-height: 20px; }
+.py-preview {
+  background: white; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 9px 13px; font-size: 18px; min-height: 42px; margin-bottom: 8px;
+  transition: all .15s; box-shadow: var(--shadow); letter-spacing: .5px;
+}
+.py-preview.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+.py-preview.ng { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+.tone-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; margin-bottom: 7px; }
+.tone-btn {
+  padding: 10px 2px; background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; text-align: center;
+  line-height: 1.3; box-shadow: var(--shadow); transition: all .1s;
+}
+.tone-btn:active { background: var(--blue-bg); border-color: var(--blue); transform: scale(.95); }
+.tone-btn.disabled { opacity: .3; pointer-events: none; }
+.tone-lbl { font-size: 9px; color: var(--text3); display: block; }
+.input-row { display: flex; gap: 6px; margin-bottom: 7px; }
+.syl-input {
+  flex: 1; padding: 10px 13px; background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 15px; outline: none; box-shadow: var(--shadow); transition: border-color .15s;
+}
+.syl-input:focus { border-color: var(--blue); }
+.del-btn {
+  padding: 10px; background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 16px; cursor: pointer; min-width: 46px;
+  text-align: center; box-shadow: var(--shadow); transition: all .1s;
+}
+.del-btn:active { background: var(--red-bg); border-color: var(--red); }
+.feedback { text-align: center; font-size: 12px; color: var(--text3); min-height: 22px; padding: 3px 0; }
+.action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn-confirm {
+  padding: 12px; background: var(--text); color: var(--bg); border: none;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.btn-confirm:active { opacity: .85; }
+.btn-skip {
+  padding: 12px; background: white; color: var(--text2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; box-shadow: var(--shadow); transition: all .1s;
+}
+.btn-skip:active { background: var(--bg2); }
+
+/* Matching */
+.match-info { font-size: 12px; color: var(--text3); text-align: center; margin-bottom: 10px; }
+.match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.match-card {
+  background: white; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 8px; text-align: center; cursor: pointer; min-height: 58px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 1.4; box-shadow: var(--shadow); transition: all .13s;
+}
+.match-card.hz { font-size: 22px; font-weight: 600; }
+.match-card.sel { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); }
+.match-card.matched { border-color: var(--green); background: var(--green-bg); color: var(--green); pointer-events: none; opacity: .7; }
+.match-card.wrong { border-color: var(--red); background: var(--red-bg); }
+.match-card:not(.matched):active { transform: scale(.96); }
+
+/* Result */
+.result-top { padding-top: 24px; text-align: center; }
+.result-mode { font-size: 11px; color: var(--text3); margin-bottom: 12px; }
+.result-circle {
+  width: 90px; height: 90px; border-radius: 50%; background: white;
+  border: 1.5px solid var(--border); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: var(--shadow);
+}
+.result-score { font-size: 28px; font-weight: 700; }
+.result-score-lbl { font-size: 10px; color: var(--text3); }
+.stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.stat-box { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; box-shadow: var(--shadow); }
+.stat-n { font-size: 20px; font-weight: 700; }
+.stat-l { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.weak-sec { margin-bottom: 20px; }
+.weak-title { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+.weak-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.weak-tag {
+  background: var(--red-bg); border: 1px solid #FCA5A5; border-radius: 20px;
+  padding: 4px 10px; font-size: 13px; color: var(--red); cursor: pointer; transition: opacity .15s;
+}
+.weak-tag:active { opacity: .7; }
+
+/* Word list */
+.wl-top { padding-top: 20px; margin-bottom: 14px; }
+.back-btn { display: flex; align-items: center; gap: 4px; background: none; border: none; font-size: 13px; color: var(--text3); cursor: pointer; padding: 0; }
+.filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.filter-btn {
+  padding: 5px 12px; background: white; border: 1.5px solid var(--border);
+  border-radius: 20px; font-size: 11px; font-weight: 500; color: var(--text3);
+  cursor: pointer; box-shadow: var(--shadow); transition: all .13s;
+}
+.filter-btn.act { background: var(--red-bg); border-color: #FCA5A5; color: var(--red); }
+.search-input {
+  width: 100%; padding: 9px 13px; background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px; outline: none;
+  margin-bottom: 10px; box-shadow: var(--shadow); transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--blue); }
+.wl-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wl-table th {
+  text-align: left; padding: 5px 8px; font-size: 10px; font-weight: 500;
+  color: var(--text3); border-bottom: 1px solid var(--border); background: var(--bg2);
+}
+.wl-table td { padding: 8px 8px; border-bottom: 1px solid var(--bg3); vertical-align: middle; }
+.wl-table tr.wk td { background: #FFF5F5; }
+.wl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--red); display: inline-block; }
+.wl-count { font-size: 11px; color: var(--text3); margin-top: 8px; text-align: center; padding-bottom: 16px; }
+.empty-msg { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; }
+
+/* Error */
+.err-box { background: var(--red-bg); border: 1px solid #FCA5A5; border-radius: var(--radius); padding: 20px; margin: 20px; line-height: 1.7; }
+.err-box code { background: #FEE2E2; padding: 2px 5px; border-radius: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="load-logo">HSK <span>汉字</span></div>
+  <div class="load-sub">単語データを読み込んでいます</div>
+  <div class="load-bar-bg"><div class="load-bar" id="l-bar" style="width:0%"></div></div>
+  <div class="load-status" id="l-status">準備中...</div>
+</div>
+
+<div class="app">
+
+  <!-- HOME -->
+  <div id="s-home" class="screen">
+    <div class="home-header">
+      <div class="home-logo">HSK <span>汉字</span></div>
+      <div class="home-tagline" id="h-tagline">読み込み中...</div>
+    </div>
+    <div class="sec-label">出題範囲</div>
+    <div class="grade-grid">
+      <div class="grade-btn" id="g1" onclick="toggleGrade(1)">
+        <span class="grade-num">1級</span>
+        <span class="grade-sub" id="g1-sub">—語</span>
+      </div>
+      <div class="grade-btn" id="g2" onclick="toggleGrade(2)">
+        <span class="grade-num">2級</span>
+        <span class="grade-sub" id="g2-sub">—語</span>
+      </div>
+    </div>
+    <div class="sec-label">ゲームモード（60秒）</div>
+    <div class="mode-grid">
+      <div class="mode-btn" id="m-t" onclick="selMode('t')">
+        <span class="mode-icon">⌨️</span>
+        <div class="mode-name">ピンイン入力</div>
+        <div class="mode-desc">声調ボタン式</div>
+      </div>
+      <div class="mode-btn" id="m-m" onclick="selMode('m')">
+        <span class="mode-icon">⊞</span>
+        <div class="mode-name">意味マッチング</div>
+        <div class="mode-desc">4ペア対応</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="start-btn" onclick="startGame()" disabled>スタート</button>
+    <button class="btn-secondary" onclick="openWL()">単語一覧を見る</button>
+  </div>
+
+  <!-- TYPING -->
+  <div id="s-t" class="screen">
+    <div class="game-header">
+      <button class="exit-btn" onclick="goHome()">✕ 終了</button>
+      <div class="score-area">
+        <span class="combo-badge" id="t-combo"></span>
+        <div><div class="score-num" id="t-sc">0</div><div class="score-lbl">スコア</div></div>
+      </div>
+    </div>
+    <div class="timer-bar-bg"><div class="timer-bar" id="t-tbar" style="width:100%"></div></div>
+    <div class="timer-text" id="t-tlbl">60秒</div>
+    <div class="hanzi-card">
+      <div class="hanzi-char" id="t-hz">—</div>
+      <div class="hanzi-hint" id="t-hint"></div>
+    </div>
+    <div class="py-preview" id="t-prev">ピンインを入力...</div>
+    <div class="tone-row">
+      <button class="tone-btn" onclick="addTone(1)">ā<span class="tone-lbl">1声</span></button>
+      <button class="tone-btn" onclick="addTone(2)">á<span class="tone-lbl">2声</span></button>
+      <button class="tone-btn" onclick="addTone(3)">ǎ<span class="tone-lbl">3声</span></button>
+      <button class="tone-btn" onclick="addTone(4)">à<span class="tone-lbl">4声</span></button>
+      <button class="tone-btn" onclick="addTone(0)">·<span class="tone-lbl">軽声</span></button>
+    </div>
+    <div class="input-row">
+      <input type="text" class="syl-input" id="t-syl" placeholder="例: shang → 4声ボタン / ni3hao3"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        oninput="onSylIn()" onkeydown="onSylKey(event)">
+      <button class="del-btn" onclick="delLast()">⌫</button>
+    </div>
+    <div class="feedback" id="t-fb"></div>
+    <div class="action-row">
+      <button class="btn-confirm" onclick="submitAns()">確認</button>
+      <button class="btn-skip" onclick="skipWord()">スキップ</button>
+    </div>
+  </div>
+
+  <!-- MATCHING -->
+  <div id="s-m" class="screen">
+    <div class="game-header">
+      <button class="exit-btn" onclick="goHome()">✕ 終了</button>
+      <div class="score-area">
+        <span class="combo-badge" id="m-combo"></span>
+        <div><div class="score-num" id="m-sc">0</div><div class="score-lbl">スコア</div></div>
+      </div>
+    </div>
+    <div class="timer-bar-bg"><div class="timer-bar" id="m-tbar" style="width:100%"></div></div>
+    <div class="timer-text" id="m-tlbl">60秒</div>
+    <div class="match-info">漢字と意味を対応させてください</div>
+    <div class="match-grid" id="m-grid"></div>
+    <div class="feedback" id="m-fb" style="margin-top:8px"></div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="s-r" class="screen">
+    <div class="result-top">
+      <div class="result-mode" id="r-mode"></div>
+      <div class="result-circle">
+        <div class="result-score" id="r-sc">0</div>
+        <div class="result-score-lbl">スコア</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-n" id="r-ok">0</div><div class="stat-l">正解</div></div>
+        <div class="stat-box"><div class="stat-n" id="r-ng">0</div><div class="stat-l">不正解</div></div>
+        <div class="stat-box"><div class="stat-n" id="r-cb">0</div><div class="stat-l">最大コンボ</div></div>
+      </div>
+    </div>
+    <div class="weak-sec" id="ws" style="display:none">
+      <div class="weak-title">苦手単語 <span style="color:var(--red);font-size:10px">（タップで一覧へ）</span></div>
+      <div class="weak-tags" id="r-wl"></div>
+    </div>
+    <button class="btn-primary" onclick="retryGame()">もう一度</button>
+    <button class="btn-secondary" onclick="goHome()">ホームへ戻る</button>
+  </div>
+
+  <!-- WORD LIST -->
+  <div id="s-wl" class="screen">
+    <div class="wl-top">
+      <button class="back-btn" onclick="backWL()">← 戻る</button>
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn act" id="wf-all" onclick="setWF('all')">すべて</button>
+      <button class="filter-btn" id="wf-weak" onclick="setWF('weak')">苦手</button>
+      <button class="filter-btn" id="wf-1" onclick="setWF('1')">1級</button>
+      <button class="filter-btn" id="wf-2" onclick="setWF('2')">2級</button>
+    </div>
+    <input type="text" class="search-input" id="wl-q"
+      placeholder="漢字・ピンイン・意味で検索..." oninput="renderWL()">
+    <div id="wl-body"><div class="empty-msg">読み込み中...</div></div>
+  </div>
+
+</div><!-- .app -->
+
+<script>
+// ===== TONE UTILS =====
+const TMAP={a:['ā','á','ǎ','à','a'],e:['ē','é','ě','è','e'],i:['ī','í','ǐ','ì','i'],o:['ō','ó','ǒ','ò','o'],u:['ū','ú','ǔ','ù','u'],v:['ǖ','ǘ','ǚ','ǜ','ü']};
+const TORD=['a','e','o','i','u','v'];
+function applyTone(s,t){const sl=s.toLowerCase();for(const v of TORD){if(sl.includes(v))return sl.replace(v,TMAP[v][t===0?4:t-1]);}return sl;}
+function normPY(p){if(!p)return'';return p.toLowerCase().replace(/[āáǎà]/g,'a').replace(/[ēéěè]/g,'e').replace(/[īíǐì]/g,'i').replace(/[ōóǒò]/g,'o').replace(/[ūúǔù]/g,'u').replace(/[ǖǘǚǜü]/g,'v').replace(/[\s\/]/g,'');}
+
+// ===== DATA FILES =====
+// このHTMLと同じ階層に data/ フォルダを置いてください
+const DATA_FILES=[
+  {path:'data/hsk3_1_001_250.json',grade:1},
+  {path:'data/hsk3_1_251_500.json',grade:1},
+  {path:'data/hsk3_2_001_250.json',grade:2},
+  {path:'data/hsk3_2_251_500.json',grade:2},
+  {path:'data/hsk3_2_501_772.json',grade:2},
+];
+const G2_OFFSET=10000;
+
+let ALL=[],pyGroups={};
+
+async function loadAll(){
+  const bar=document.getElementById('l-bar');
+  const st=document.getElementById('l-status');
+  for(let i=0;i<DATA_FILES.length;i++){
+    const {path,grade}=DATA_FILES[i];
+    st.textContent=path+' を読み込み中...';
+    bar.style.width=(i/DATA_FILES.length*80)+'%';
+    try{
+      const res=await fetch(path);
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      const words=await res.json();
+      words.forEach(w=>{
+        ALL.push({id:grade===2?w.id+G2_OFFSET:w.id,hanzi:w.hanzi,pinyin:w.pinyin,ja:w.ja,grade});
+      });
+    }catch(e){
+      throw new Error('「'+path+'」の読み込みに失敗しました。\n'+e.message);
+    }
+  }
+  ALL.forEach(w=>{const np=normPY(w.pinyin);(pyGroups[np]=pyGroups[np]||[]).push(w.id);});
+  bar.style.width='100%';
+  st.textContent=ALL.length+'語 読み込み完了';
+}
+
+function isCorrectPY(word,input){
+  const ni=normPY(input);
+  const grp=pyGroups[normPY(word.pinyin)]||[];
+  return grp.some(id=>{const w=ALL.find(x=>x.id===id);return w&&normPY(w.pinyin)===ni;});
+}
+
+// ===== STATE =====
+let weakSet=new Set();
+try{weakSet=new Set(JSON.parse(localStorage.getItem('hsk_weak')||'[]').map(Number));}catch(e){}
+function saveWeak(){try{localStorage.setItem('hsk_weak',JSON.stringify([...weakSet]));}catch(e){}}
+
+let selGrades=new Set(),curMode=null;
+let score=0,correct=0,wrong=0,combo=0,maxCombo=0;
+let timerInt=null,timeLeft=60;
+let curWord=null,wQueue=[],curPY=[],curSyl='';
+let mPairs=[],selCard=null,mCnt=0;
+let wlFilter='all',prevScr='home';
+const PAIRS=4;
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function showScr(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s-'+id).classList.add('active');}
+function gw(){return ALL.filter(w=>[...selGrades].includes(w.grade));}
+
+// HOME
+function toggleGrade(g){if(selGrades.has(g))selGrades.delete(g);else selGrades.add(g);document.getElementById('g1').classList.toggle('sel',selGrades.has(1));document.getElementById('g2').classList.toggle('sel',selGrades.has(2));updBtn();}
+function selMode(m){curMode=m;document.getElementById('m-t').classList.toggle('sel',m==='t');document.getElementById('m-m').classList.toggle('sel',m==='m');updBtn();}
+function updBtn(){document.getElementById('start-btn').disabled=!(selGrades.size>0&&curMode);}
+function goHome(){clearInterval(timerInt);showScr('home');}
+function startGame(){wQueue=shuffle(gw());if(!wQueue.length)return;score=0;correct=0;wrong=0;combo=0;maxCombo=0;timeLeft=60;if(curMode==='t')startTyping();else startMatching();}
+function retryGame(){startGame();}
+
+// TIMER
+function updTimer(p){document.getElementById(p+'-tbar').style.width=(timeLeft/60*100)+'%';document.getElementById(p+'-tlbl').textContent=timeLeft+'秒';}
+function startTimer(p){clearInterval(timerInt);updTimer(p);timerInt=setInterval(()=>{timeLeft--;updTimer(p);if(timeLeft<=0){clearInterval(timerInt);showResult();}},1000);}
+
+// SCORING
+function markOk(p){combo++;if(combo>maxCombo)maxCombo=combo;score+=10+Math.min(combo-1,5)*2;correct++;document.getElementById(p+'-sc').textContent=score;const cb=document.getElementById(p+'-combo');if(combo>1){cb.style.display='inline-block';cb.textContent=combo+'コンボ！';}else cb.style.display='none';}
+function markNg(p,w){combo=0;wrong++;if(w)weakSet.add(w.id);saveWeak();const cb=document.getElementById(p+'-combo');if(cb)cb.style.display='none';}
+
+// TYPING
+function startTyping(){wQueue=shuffle(gw());showScr('t');document.getElementById('t-sc').textContent='0';document.getElementById('t-combo').style.display='none';nextTW();startTimer('t');}
+function nextTW(){if(!wQueue.length)wQueue=shuffle(gw());curWord=wQueue.shift();curPY=[];curSyl='';document.getElementById('t-hz').textContent=curWord.hanzi.split('|')[0];document.getElementById('t-hint').textContent='';document.getElementById('t-prev').textContent='ピンインを入力...';document.getElementById('t-prev').className='py-preview';document.getElementById('t-syl').value='';document.getElementById('t-fb').textContent='';}
+// 数字声調付きピンイン文字列を声調記号付きに変換
+// 例: "ni3hao3" → "nǐhǎo"  / "shang4hai3" → "shànghǎi"
+function convertNumericTone(input) {
+  // 数字声調が含まれていなければ null を返す
+  if(!/[1-4]/.test(input)) return null;
+
+  // 音節 + 数字(1-4 or 0=軽声) のパターンを繰り返し置換
+  return input.toLowerCase().replace(
+    /([bpmfdtnlgkhjqxzcsryw]?h?[iuüaeiouāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+(?:ng|n|r)?)([1-40])?/gi,
+    (match, syllable, tone) => {
+      if(!tone || tone === '0') return syllable; // 軽声・声調なしはそのまま
+      const t = parseInt(tone) - 1;
+      for(const v of ['a','e','o']) {
+        if(syllable.includes(v)) return syllable.replace(v, TMAP[v][t]);
+      }
+      if(syllable.includes('ou')) return syllable.replace('o', TMAP['o'][t]);
+      if(syllable.includes('ui')) return syllable.replace('i', TMAP['i'][t]);
+      if(syllable.includes('iu')) return syllable.replace('u', TMAP['u'][t]);
+      for(const v of ['i','u','v','ü']) {
+        if(syllable.includes(v) && TMAP[v]) return syllable.replace(v, TMAP[v][t]);
+      }
+      return syllable;
+    }
+  );
+}
+
+// 入力全体が数字声調形式かどうか判定
+function isNumericToneInput(val) {
+  // 数字（1-4）が含まれていれば数字声調モードとみなす
+  return /[1-4]/.test(val);
+}
+
+function onSylIn(){
+  curSyl=document.getElementById('t-syl').value;
+  refreshPrev();
+}
+function onSylKey(e){if(e.key==='Enter')submitAns();}
+
+function refreshPrev(){
+  let display;
+  if(isNumericToneInput(curSyl)) {
+    // 数字声調モード: リアルタイム変換してプレビュー
+    const converted = convertNumericTone(curSyl);
+    display = converted || curSyl;
+  } else {
+    // ボタン入力モード: 確定済み音節 + 入力中文字列
+    display = curPY.join('') + (curSyl || '');
+  }
+  const el = document.getElementById('t-prev');
+  el.textContent = display || 'ピンインを入力...';
+  el.className = 'py-preview';
+  // 数字声調モード中は声調ボタンをグレーアウト
+  const numMode = isNumericToneInput(curSyl);
+  document.querySelectorAll('.tone-btn').forEach(btn => {
+    btn.classList.toggle('disabled', numMode);
+  });
+}
+
+function addTone(t){
+  if(isNumericToneInput(curSyl)) return; // 数字声調モード中はボタン無効
+  const s=curSyl.trim();
+  if(!s)return;
+  curPY.push(applyTone(s,t));
+  curSyl='';
+  document.getElementById('t-syl').value='';
+  refreshPrev();
+}
+
+function delLast(){
+  if(curSyl){curSyl=curSyl.slice(0,-1);document.getElementById('t-syl').value=curSyl;}
+  else if(curPY.length)curPY.pop();
+  refreshPrev();
+}
+
+function submitAns(){
+  if(!curWord)return;
+  let inp;
+  if(isNumericToneInput(curSyl)) {
+    // 数字声調モード: 入力フィールド全体を変換して判定
+    inp = convertNumericTone(curSyl) || curSyl;
+  } else {
+    // ボタン入力モード: 確定済み + 未確定をそのまま結合
+    inp = curPY.join('') + curSyl.trim();
+  }
+  if(!inp)return;
+  if(isCorrectPY(curWord,inp)){
+    markOk('t');
+    document.getElementById('t-prev').className='py-preview ok';
+    document.getElementById('t-fb').textContent='✓ 正解！';
+    setTimeout(nextTW,700);
+  }else{
+    markNg('t',curWord);
+    document.getElementById('t-prev').className='py-preview ng';
+    document.getElementById('t-fb').textContent='✗ 正解: '+curWord.pinyin;
+    document.getElementById('t-hint').textContent=curWord.ja;
+    setTimeout(nextTW,1400);
+  }
+}
+function skipWord(){markNg('t',curWord);document.getElementById('t-fb').textContent='正解: '+curWord.pinyin+'（'+curWord.ja+'）';setTimeout(nextTW,1200);}
+
+// MATCHING
+function startMatching(){wQueue=shuffle(gw());showScr('m');document.getElementById('m-sc').textContent='0';document.getElementById('m-combo').style.display='none';nextMR();startTimer('m');}
+function nextMR(){if(wQueue.length<PAIRS)wQueue=shuffle(gw());mPairs=wQueue.splice(0,PAIRS);selCard=null;mCnt=0;document.getElementById('m-fb').textContent='';renderMG();}
+function renderMG(){const g=document.getElementById('m-grid');const L=mPairs.map((w,i)=>({t:'hz',w,i}));const R=shuffle(mPairs.map((w,i)=>({t:'ja',w,i})));const cards=[];for(let i=0;i<PAIRS;i++){cards.push(L[i]);cards.push(R[i]);}g.innerHTML='';cards.forEach(c=>{const d=document.createElement('div');d.className='match-card'+(c.t==='hz'?' hz':'');d.textContent=c.t==='hz'?c.w.hanzi.split('|')[0]:c.w.ja;d.dataset.i=c.i;d.dataset.t=c.t;d.onclick=()=>onMC(d);g.appendChild(d);});}
+function onMC(d){if(d.classList.contains('matched'))return;if(!selCard){selCard=d;d.classList.add('sel');return;}if(selCard===d){selCard.classList.remove('sel');selCard=null;return;}const a=selCard,b=d;if(a.dataset.t===b.dataset.t){a.classList.remove('sel');selCard=b;b.classList.add('sel');return;}if(a.dataset.i===b.dataset.i){a.classList.remove('sel');a.classList.add('matched');b.classList.add('matched');markOk('m');mCnt++;selCard=null;document.getElementById('m-fb').textContent='✓ 正解！';if(mCnt===PAIRS)setTimeout(nextMR,500);}else{const ww=mPairs[parseInt(a.dataset.t==='hz'?a.dataset.i:b.dataset.i)];markNg('m',ww);a.classList.remove('sel');a.classList.add('wrong');b.classList.add('wrong');selCard=null;document.getElementById('m-fb').textContent='✗ 不正解';setTimeout(()=>{a.classList.remove('wrong');b.classList.remove('wrong');},500);}}
+
+// RESULT
+function showResult(){clearInterval(timerInt);document.getElementById('r-mode').textContent=curMode==='t'?'ピンイン入力モード':'意味マッチングモード';document.getElementById('r-sc').textContent=score;document.getElementById('r-ok').textContent=correct;document.getElementById('r-ng').textContent=wrong;document.getElementById('r-cb').textContent=maxCombo;const wl=document.getElementById('r-wl');wl.innerHTML='';const rw=ALL.filter(w=>weakSet.has(w.id)).slice(-12);if(rw.length){document.getElementById('ws').style.display='block';rw.forEach(w=>{const t=document.createElement('span');t.className='weak-tag';t.textContent=w.hanzi.split('|')[0];t.onclick=()=>{prevScr='r';setWF('weak');showScr('wl');renderWL();};wl.appendChild(t);});}else document.getElementById('ws').style.display='none';showScr('r');}
+
+// WORD LIST
+function openWL(){prevScr='home';showScr('wl');renderWL();}
+function backWL(){showScr(prevScr);}
+function setWF(f){wlFilter=f;['all','weak','1','2'].forEach(x=>document.getElementById('wf-'+x).classList.remove('act'));document.getElementById('wf-'+f).classList.add('act');renderWL();}
+function renderWL(){const q=(document.getElementById('wl-q').value||'').toLowerCase();let words=ALL;if(wlFilter==='weak')words=words.filter(w=>weakSet.has(w.id));else if(wlFilter==='1')words=words.filter(w=>w.grade===1);else if(wlFilter==='2')words=words.filter(w=>w.grade===2);if(q)words=words.filter(w=>w.hanzi.includes(q)||w.pinyin.toLowerCase().includes(q)||w.ja.includes(q));const body=document.getElementById('wl-body');if(!words.length){body.innerHTML='<div class="empty-msg">該当する単語がありません</div>';return;}const LIMIT=300;let h='<table class="wl-table"><thead><tr><th></th><th>漢字</th><th>ピンイン</th><th>意味</th></tr></thead><tbody>';words.slice(0,LIMIT).forEach(w=>{const wk=weakSet.has(w.id);h+=`<tr class="${wk?'wk':''}"><td>${wk?'<span class="wl-dot"></span>':''}</td><td style="font-size:15px;font-weight:500">${w.hanzi.split('|')[0]}</td><td style="color:var(--text3);font-size:11px">${w.pinyin}</td><td style="font-size:12px">${w.ja}</td></tr>`;});h+='</tbody></table>';if(words.length>LIMIT)h+=`<div class="wl-count">表示: ${LIMIT}件 / ${words.length}件（検索で絞り込んでください）</div>`;else h+=`<div class="wl-count">${words.length}件</div>`;body.innerHTML=h;}
+
+// ===== INIT =====
+(async function(){
+  try{
+    await loadAll();
+    const g1=ALL.filter(w=>w.grade===1).length;
+    const g2=ALL.filter(w=>w.grade===2).length;
+    document.getElementById('g1-sub').textContent=g1+'語';
+    document.getElementById('g2-sub').textContent=g2+'語';
+    document.getElementById('h-tagline').textContent='1級 '+g1+'語 ＋ 2級 '+g2+'語 タイムアタック';
+    setTimeout(()=>{document.getElementById('loading-screen').style.display='none';showScr('home');},400);
+  }catch(err){
+    document.getElementById('loading-screen').innerHTML=`
+      <div class="err-box">
+        <div style="font-size:16px;font-weight:700;color:var(--red);margin-bottom:12px">⚠ 読み込みエラー</div>
+        <div style="font-size:13px;margin-bottom:16px">${err.message.replace(/\n/g,'<br>')}</div>
+        <div style="font-size:12px;line-height:2;color:var(--text2)">
+          <strong>解決方法</strong><br>
+          1. このHTMLファイルの隣に <code>data/</code> フォルダを配置<br>
+          2. ターミナルでHTMLがある場所まで移動して実行：<br>
+          <code style="display:block;margin:6px 0;padding:8px;background:#FEE2E2;border-radius:6px">python3 -m http.server 8080</code>
+          3. ブラウザで <code>http://localhost:8080</code> を開く
+        </div>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>
