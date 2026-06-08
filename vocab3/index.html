@@ -501,10 +501,14 @@ function convertNumericTone(input) {
   if(!/[1-4]/.test(input)) return null;
 
   // 音節 + 数字(1-4 or 0=軽声) のパターンを繰り返し置換
+  // ※ v はüの代替入力（nv3 → nǚ）なので母音グループに含める
   return input.toLowerCase().replace(
-    /([bpmfdtnlgkhjqxzcsryw]?h?[iuüaeiouāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+(?:ng|n|r)?)([1-40])?/gi,
+    /([bpmfdtnlgkhjqxzcsryw]?h?[iuvüaeiouāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+(?:ng|n|r)?)([1-40])?/gi,
     (match, syllable, tone) => {
-      if(!tone || tone === '0') return syllable; // 軽声・声調なしはそのまま
+      if(!tone || tone === '0') {
+        // 声調なし・軽声: v だけ ü に置き換えて返す
+        return syllable.replace(/v/g, 'ü');
+      }
       const t = parseInt(tone) - 1;
       for(const v of ['a','e','o']) {
         if(syllable.includes(v)) return syllable.replace(v, TMAP[v][t]);
@@ -512,7 +516,11 @@ function convertNumericTone(input) {
       if(syllable.includes('ou')) return syllable.replace('o', TMAP['o'][t]);
       if(syllable.includes('ui')) return syllable.replace('i', TMAP['i'][t]);
       if(syllable.includes('iu')) return syllable.replace('u', TMAP['u'][t]);
-      for(const v of ['i','u','v','ü']) {
+      // v はüの代替 → TMAP['v'] で声調記号付きüに変換
+      if(syllable.includes('v')) return syllable.replace('v', TMAP['v'][t]);
+      // ü 直接入力にも対応
+      if(syllable.includes('ü')) return syllable.replace('ü', TMAP['v'][t]);
+      for(const v of ['i','u']) {
         if(syllable.includes(v) && TMAP[v]) return syllable.replace(v, TMAP[v][t]);
       }
       return syllable;
